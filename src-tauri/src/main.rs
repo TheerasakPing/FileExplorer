@@ -1,22 +1,32 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-mod commands;
 pub mod constants;
+#[macro_use]
+mod state;
+mod commands;
 mod error_handling;
 mod filesystem;
 pub mod models;
 mod search_engine;
-mod state;
+mod icons;
 
 use crate::commands::{
+    icon_commands,
     command_exec_commands, file_system_operation_commands, hash_commands, meta_data_commands,
     search_engine_commands, settings_commands, template_commands, volume_operations_commands, sftp_file_system_operation_commands, preview_commands, permission_commands
 };
 use tauri::ipc::Invoke;
 use tauri::Manager;
+use crate::icons::manager::IconManager;
+use std::path::PathBuf;
 
 fn all_commands() -> fn(Invoke) -> bool {
     tauri::generate_handler![
+        // Icon commands
+        icon_commands::import_icon_theme,
+        icon_commands::get_available_themes,
+        icon_commands::set_active_theme,
+        icon_commands::get_file_icon,
         // Filesystem commands
         //file_system_operation_commands::open_file,
         file_system_operation_commands::open_directory,
@@ -107,6 +117,12 @@ async fn main() {
                 let _ = window.set_focus();
             }
             
+            // Initialize IconManager
+            let app_handle = app.handle();
+            let app_data_dir = app_handle.path().app_data_dir().unwrap_or(PathBuf::from("."));
+            let icon_manager = IconManager::new(app_data_dir);
+            app.manage(icon_manager);
+
             // Clean up old SFTP temporary files on startup
             tokio::spawn(async {
                 if let Err(e) = commands::sftp_file_system_operation_commands::cleanup_sftp_temp_files() {
