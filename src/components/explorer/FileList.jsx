@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { getFileType } from '../../utils/formatters';
 import { useFileSystem } from '../../providers/FileSystemProvider';
 import { useContextMenu } from '../../providers/ContextMenuProvider';
@@ -21,7 +21,7 @@ import './fileList.css';
  */
 const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, searchTerm = '', disableArrowKeys = false, onColumnsChange }) => {
     const { selectedItems, selectItem, loadDirectory, clearSelection, focusedItem, setFocusedItem, openFile } = useFileSystem();
-    const { openContextMenu } = useContextMenu();
+    const { openContextMenu, clipboard } = useContextMenu();
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
     const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
     const [isCtrlKeyPressed, setIsCtrlKeyPressed] = useState(false);
@@ -135,9 +135,10 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
 
     /**
      * Returns sorted data based on current sort configuration
+     * Memoized to prevent re-sorting on every render
      * @returns {Array} Sorted array of files and directories
      */
-    const getSortedData = () => {
+    const sortedItems = useMemo(() => {
         if (!data || (!data.directories?.length && !data.files?.length)) {
             return [];
         }
@@ -151,7 +152,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         ];
 
         // Always put directories first
-        const sortedItems = [...combinedItems].sort((a, b) => {
+        return combinedItems.sort((a, b) => {
             // Directories always come before files
             if (a.isDirectory && !b.isDirectory) return -1;
             if (!a.isDirectory && b.isDirectory) return 1;
@@ -183,9 +184,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
             if (aValue > bValue) return direction === 'asc' ? 1 : -1;
             return 0;
         });
-
-        return sortedItems;
-    };
+    }, [data, sortConfig]);
 
     /**
      * Handles click on the container (empty space)
@@ -209,17 +208,12 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         e.preventDefault();
         e.stopPropagation();
 
-        const currentSortedItems = getSortedData();
-        
         // Determine if we clicked on an item or empty space
         const clickedItem = e.target.closest('[data-path]');
-        const item = clickedItem ? currentSortedItems.find(item => item.path === clickedItem.dataset.path) : null;
+        const item = clickedItem ? sortedItems.find(item => item.path === clickedItem.dataset.path) : null;
 
         openContextMenu(e, item);
     };
-
-    // Get sorted data - call this before useEffects that need it
-    const sortedItems = getSortedData();
 
     /**
      * Sets up keyboard event listeners for multi-selection
@@ -569,6 +563,22 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         }
     };
 
+    // Stable handlers using refs to avoid re-renders of FileItem
+    const handleItemClickRef = useRef(handleItemClick);
+
+    // Update ref on every render to capture latest closure variables
+    useEffect(() => {
+        handleItemClickRef.current = handleItemClick;
+    });
+
+    const stableOnItemClick = useCallback((item, index, e) => {
+        handleItemClickRef.current(item, index, false);
+    }, []);
+
+    const stableOnItemDoubleClick = useCallback((item, index, e) => {
+        handleItemClickRef.current(item, index, true);
+    }, []);
+
     return (
         <div className="file-list-wrapper">
             <div
@@ -621,18 +631,24 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
 
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
-                    {sortedItems.map((item, index) => (
-                        <FileItem
-                            key={item.path}
-                            item={item}
-                            viewMode={viewMode}
-                            isSelected={selectedItems.some(selected => selected.path === item.path)}
-                            isFocused={focusedItem && focusedItem.path === item.path}
-                            onClick={(e) => handleItemClick(item, index)}
-                            onDoubleClick={() => handleItemClick(item, index, true)}
-                            onContextMenu={handleContextMenu}
-                        />
-                    ))}
+                    {sortedItems.map((item, index) => {
+                        const isCut = clipboard?.operation === 'cut' &&
+                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+
+                        return (
+                            <FileItem
+                                key={item.path}
+                                item={item}
+                                index={index}
+                                viewMode={viewMode}
+                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isFocused={focusedItem && focusedItem.path === item.path}
+                                isCut={!!isCut}
+                                onItemClick={stableOnItemClick}
+                                onItemDoubleClick={stableOnItemDoubleClick}
+                            />
+                        );
+                    })}
                 </div>
             </div>
         </div>
