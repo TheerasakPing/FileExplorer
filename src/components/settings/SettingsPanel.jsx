@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useSettings } from '../../providers/SettingsProvider';
+import { importIconTheme, getAvailableThemes, setActiveTheme } from '../../utils/iconTheme';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import './settings.css';
@@ -17,6 +19,8 @@ const SettingsPanel = ({ isOpen, onClose }) => {
     const [isResetting, setIsResetting] = useState(false);
     const [activeTab, setActiveTab] = useState('appearance');
     const [localError, setLocalError] = useState(null);
+    const [iconThemes, setIconThemes] = useState([]);
+    const [currentIconTheme, setCurrentIconTheme] = useState('');
 
     /**
      * Available tabs configuration
@@ -109,6 +113,47 @@ const SettingsPanel = ({ isOpen, onClose }) => {
         }
     }, [localError]);
 
+    useEffect(() => {
+        if (isOpen && activeTab === 'appearance') {
+            loadIconThemes();
+        }
+    }, [isOpen, activeTab]);
+
+    const loadIconThemes = async () => {
+        const themes = await getAvailableThemes();
+        setIconThemes(themes);
+        // Initially no theme selected (default built-in)
+    };
+
+    const handleImportTheme = async () => {
+        try {
+            const selected = await open({
+                multiple: false,
+                filters: [{
+                    name: 'VS Code Icon Theme',
+                    extensions: ['vxis', 'zip']
+                }]
+            });
+
+            if (selected) {
+                await importIconTheme(selected);
+                await loadIconThemes();
+                alert('Icon theme imported successfully!');
+            }
+        } catch (err) {
+            console.error(err);
+            setLocalError('Failed to import icon theme');
+        }
+    };
+
+    const handleThemeChange = async (e) => {
+        const themeId = e.target.value;
+        setCurrentIconTheme(themeId);
+        if (themeId) {
+            await setActiveTheme(themeId);
+        }
+    };
+
     /**
      * Handles resetting all settings to default values
      * Confirms with user before proceeding
@@ -167,6 +212,31 @@ const SettingsPanel = ({ isOpen, onClose }) => {
                             <span>{theme.label}</span>
                         </label>
                     ))}
+                </div>
+            </div>
+
+            <div className="settings-section">
+                <h3>Icon Theme</h3>
+                <div className="form-group">
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <select
+                            className="settings-select"
+                            value={currentIconTheme}
+                            onChange={handleThemeChange}
+                            style={{ flexGrow: 1 }}
+                        >
+                            <option value="">Default (Built-in)</option>
+                            {iconThemes.map(t => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                        </select>
+                        <Button onClick={handleImportTheme} size="small">
+                            Import .vxis
+                        </Button>
+                    </div>
+                    <div className="input-hint">
+                        Import VS Code icon themes (.vxis) to customize file icons.
+                    </div>
                 </div>
             </div>
 
@@ -553,4 +623,3 @@ const SettingsPanel = ({ isOpen, onClose }) => {
 };
 
 export default SettingsPanel;
-

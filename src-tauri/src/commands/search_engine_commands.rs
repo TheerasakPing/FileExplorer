@@ -384,8 +384,8 @@ pub fn get_search_engine_info_impl(
 pub async fn get_indexing_progress(
     search_engine_state: State<'_, Arc<Mutex<SearchEngineState>>>,
 ) -> Result<IndexingProgress, String> {
-    let state = search_engine_state.lock().map_err(|e| e.to_string())?;
-    let data = state.data.lock().map_err(|e| e.to_string())?;
+    let state = search_engine_state.lock().map_err(|_| "Lock poisoned".to_string())?;
+    let data = state.data.lock().map_err(|_| "Lock poisoned".to_string())?;
     let progress = data.progress.clone();
 
     // Add debug logging for every progress request
@@ -406,8 +406,8 @@ pub async fn get_indexing_progress(
 pub async fn get_indexing_status(
     search_engine_state: State<'_, Arc<Mutex<SearchEngineState>>>,
 ) -> Result<String, String> {
-    let state = search_engine_state.lock().map_err(|e| e.to_string())?;
-    let data = state.data.lock().map_err(|e| e.to_string())?;
+    let state = search_engine_state.lock().map_err(|_| "Lock poisoned".to_string())?;
+    let data = state.data.lock().map_err(|_| "Lock poisoned".to_string())?;
     let status = format!("{:?}", data.status);
 
     // Add debug logging
@@ -422,10 +422,10 @@ pub async fn stop_indexing(
 ) -> Result<(), String> {
     log_info!("Stopping indexing process");
 
-    let state = search_engine_state.lock().map_err(|e| e.to_string())?;
+    let state = search_engine_state.lock().map_err(|_| "Lock poisoned".to_string())?;
 
     // Lock the state data to update status
-    let mut data = state.data.lock().map_err(|e| e.to_string())?;
+    let mut data = state.data.lock().map_err(|_| "Lock poisoned".to_string())?;
 
     // Update status first
     data.status = SearchEngineStatus::Cancelled;
@@ -433,7 +433,7 @@ pub async fn stop_indexing(
     drop(data);
 
     // Lock the engine to call stop_indexing
-    let mut engine = state.engine.write().map_err(|e| e.to_string())?;
+    let mut engine = state.engine.write().map_err(|_| "Lock poisoned".to_string())?;
 
     // Call stop_indexing on the engine
     engine.stop_indexing();
@@ -811,7 +811,7 @@ pub fn get_suggestions_impl(
             }
             
             // Sort suggestions by relevance (exact prefix match first, then alphabetical)
-            suggestions.sort_by(|a, b| {
+            suggestions.sort_by(|a: &String, b: &String| {
                 let a_lower = a.to_lowercase();
                 let b_lower = b.to_lowercase();
                 let prefix_lower = prefix.to_lowercase();

@@ -1,17 +1,41 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { getFileIconType } from '../../utils/icons';
+import { getFileIconPath } from '../../utils/iconTheme';
 
 /**
  * Component that displays an appropriate icon for a file or directory
  * @param {Object} props - Component properties
  * @param {string} props.filename - Name of the file or directory
  * @param {boolean} props.isDirectory - Whether the item is a directory
+ * @param {boolean} props.isOpened - Whether the directory is opened (for tree views)
  * @param {string} [props.size='medium'] - Size of the icon: 'small', 'medium', or 'large'
  * @returns {React.ReactElement} File icon component
  */
-const FileIcon = ({ filename, isDirectory, size = 'medium' }) => {
-    // Determine the appropriate icon
-    const iconType = isDirectory ? 'folder' : getFileIconType(filename);
+const FileIcon = ({ filename, isDirectory, isOpened = false, size = 'medium' }) => {
+    const [themeIconPath, setThemeIconPath] = useState(null);
+
+    // Fetch theme icon on mount or when props change
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchIcon = async () => {
+            const path = await getFileIconPath(filename, isDirectory, isOpened);
+            if (isMounted) {
+                setThemeIconPath(path);
+            }
+        };
+
+        fetchIcon();
+
+        // Listen for theme changes to re-fetch
+        const handleThemeChange = () => fetchIcon();
+        window.addEventListener('icon-theme-changed', handleThemeChange);
+
+        return () => {
+            isMounted = false;
+            window.removeEventListener('icon-theme-changed', handleThemeChange);
+        };
+    }, [filename, isDirectory, isOpened]);
 
     // Size classes
     const sizeClasses = {
@@ -20,19 +44,22 @@ const FileIcon = ({ filename, isDirectory, size = 'medium' }) => {
         large: 'file-icon-large',
     };
 
-    /**
-     * Gets file extension from filename
-     * @param {string} filename - Name of the file
-     * @returns {string} The file extension or empty string if none found
-     */
+    if (themeIconPath) {
+        return (
+            <div className={`file-icon ${sizeClasses[size] || ''}`}>
+                <img src={themeIconPath} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            </div>
+        );
+    }
+
+    // Fallback to existing SVG icons
+    const iconType = isDirectory ? 'folder' : getFileIconType(filename);
     const getFileExtension = (filename) => {
         if (!filename || !filename.includes('.')) return '';
         return filename.split('.').pop().toLowerCase();
     };
-
     const extension = getFileExtension(filename);
 
-    // Return the appropriate icon SVG based on type
     return (
         <div className={`file-icon file-icon-${iconType} ${sizeClasses[size] || ''}`}>
             {iconType === 'folder' && (
