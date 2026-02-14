@@ -10,6 +10,9 @@ pub mod test_generate_test_data {
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex};
 
+    // Mutex to prevent race conditions when generating test data in parallel tests
+    static GENERATION_LOCK: Mutex<()> = Mutex::new(());
+
     /// Generates a test data directory structure with random folder and file names.
     /// This function creates a hierarchical directory structure with random file and folder names
     /// for testing purposes. It creates a specified number of folders per level, with files
@@ -59,10 +62,7 @@ pub mod test_generate_test_data {
         // Function to generate random strings based on a predefined set
         let generate_random_name = || -> String {
             let charset: Vec<&str> =
-                "banana,apple,orange,grape,watermelon,kiwi,mango,peach,cherry,\
-        strawberry,blueberry,raspberry,blackberry,lemon,lime,coconut,papaya,pineapple,tangerine,\
-        car,truck,motorcycle,bicycle,bus,train,airplane,helicopter,boat,ship,submarine,scooter,van,\
-        ambulance,taxi,firetruck,tractor,yacht,jetski,speedboat,racecar"
+                "banana,apple,orange,grape,watermelon,kiwi,mango,peach,cherry,strawberry,blueberry,raspberry,blackberry,lemon,lime,coconut,papaya,pineapple,tangerine,car,truck,motorcycle,bicycle,bus,train,airplane,helicopter,boat,ship,submarine,scooter,van,ambulance,taxi,firetruck,tractor,yacht,jetski,speedboat,racecar"
                     .split(",")
                     .collect::<Vec<_>>();
 
@@ -169,6 +169,10 @@ pub mod test_generate_test_data {
 
     #[cfg(test)]
     pub fn generate_test_data_if_not_exists(base_path: PathBuf) -> Result<(), std::io::Error> {
+        // Lock the mutex to ensure only one thread checks/generates at a time
+        // Use unwrap_or_else to handle poisoned mutexes (e.g. if a previous thread panicked)
+        let _guard = GENERATION_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+
         if !base_path.exists() {
             log_info!("Test data not found, generating...");
             generate_test_data(base_path)?;
