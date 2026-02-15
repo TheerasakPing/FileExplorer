@@ -612,6 +612,7 @@ impl SearchCore {
     ///
     /// # Performance
     /// O(n) where n is the number of files and directories under the path
+    #[allow(unused_assignments)]
     pub fn remove_paths_recursive(&mut self, path: &str) {
         #[cfg(feature = "index-progress-logging")]
         let start_time = Instant::now();
@@ -673,12 +674,10 @@ impl SearchCore {
                 
                 self.remove_paths_recursive(&path_to_remove);
                 
-                #[allow(unused_assignments)]
                 removed_count += 1;
             } else {
                 self.remove_path(&path_to_remove);
                 
-                #[allow(unused_assignments)]
                 removed_count += 1;
             }
         }
@@ -795,6 +794,7 @@ impl SearchCore {
     /// - Typical latency: ~1ms for datasets of up to 170,000 paths
     /// - Cache provides 3×-7× speedup for repeated queries
     #[inline]
+    #[allow(unused_assignments)]
     pub fn search(&mut self, query: &str) -> Vec<(String, f32)> {
         #[cfg(feature = "search-progress-logging")]
         let search_start = Instant::now();
@@ -897,7 +897,6 @@ impl SearchCore {
                 if !seen.contains(&p) {
                     seen.insert(p.clone());
                     self.results_buffer.push((p, s));
-                    #[allow(unused_assignments)]
                     added_fuzzy += 1;
                 }
             }
