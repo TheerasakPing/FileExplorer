@@ -184,8 +184,8 @@ pub async fn open_directory(path: String) -> Result<String, String> {
                 access_rights_as_string: get_access_permission_string(metadata.permissions(), true),
                 access_rights_as_number: get_access_permission_number(metadata.permissions(), true),
                 size_in_bytes: 0,
-                sub_file_count: path_of_entry.to_str().map(count_subfiles).unwrap_or(0),
-                sub_dir_count: path_of_entry.to_str().map(count_subdirectories).unwrap_or(0),
+                sub_file_count: 0,
+                sub_dir_count: 0,
                 created: metadata
                     .created()
                     .map_or("1970-01-01 00:00:00".to_string(), |time| {

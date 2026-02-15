@@ -10,3 +10,4 @@ pub mod sftp_file_system_operation_commands;
 pub mod preview_commands;
 pub mod permission_commands;
 pub mod icon_commands;
+pub mod watcher_commands;

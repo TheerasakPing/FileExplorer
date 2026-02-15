@@ -13,7 +13,7 @@ mod icons;
 use crate::commands::{
     icon_commands,
     command_exec_commands, file_system_operation_commands, hash_commands, meta_data_commands,
-    search_engine_commands, settings_commands, template_commands, volume_operations_commands, sftp_file_system_operation_commands, preview_commands, permission_commands
+    search_engine_commands, settings_commands, template_commands, volume_operations_commands, sftp_file_system_operation_commands, preview_commands, permission_commands, watcher_commands
 };
 use tauri::ipc::Invoke;
 use tauri::Manager;
@@ -101,6 +101,9 @@ fn all_commands() -> fn(Invoke) -> bool {
         // Permission commands
         permission_commands::request_full_disk_access,
         permission_commands::check_directory_access,
+        // Watcher commands
+        watcher_commands::watch_directory,
+        watcher_commands::unwatch_directory,
     ]
 }
 
