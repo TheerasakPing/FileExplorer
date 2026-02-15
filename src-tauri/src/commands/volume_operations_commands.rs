@@ -1,3 +1,4 @@
+use crate::log_info;
 use crate::models::VolumeInformation;
 use sysinfo::Disks;
 

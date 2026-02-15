@@ -1,6 +1,6 @@
 use crate::error_handling::{Error, ErrorCode};
 use crate::models::{
-    count_subdirectories, count_subfiles, format_system_time, get_access_permission_number,
+    format_system_time, get_access_permission_number,
     get_access_permission_string, Entries,
 };
 use crate::{log_error, models};

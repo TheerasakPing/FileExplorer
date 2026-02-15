@@ -39,7 +39,7 @@ base64 = "0.22.1"
 chardetng = "0.1.17"
 bumpalo = "3.14"  # Arena allocation for temporary objects
 parking_lot = "0.12"  # Better RwLock implementation
-notify = "6.1.1"
+notify = { version = "6.1.1", features = ["serde"] }
 
 # macOS-spezifische Dependencies
 [target.'cfg(target_os = "macos")'.dependencies]
