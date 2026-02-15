@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { useHistory } from './HistoryProvider';
 import { useSettings } from './SettingsProvider';
 import { useSftp } from './SftpProvider';
@@ -104,7 +105,7 @@ export default function FileSystemProvider({ children }) {
     }, []);
 
     // Load directory contents - enhanced with SFTP support
-    const loadDirectory = useCallback(async (path) => {
+    const loadDirectory = useCallback(async (path, quiet = false) => {
         if (!path) {
             console.error("Cannot load directory: path is empty");
             setIsLoading(false);
@@ -112,7 +113,7 @@ export default function FileSystemProvider({ children }) {
         }
 
         console.log(`Attempting to load directory: ${path}`);
-        setIsLoading(true);
+        if (!quiet) setIsLoading(true);
         setError(null);
 
         try {
@@ -528,6 +529,40 @@ export default function FileSystemProvider({ children }) {
             loadDirectory(currentPath);
         }
     }, [settings.show_hidden_files_and_folders, currentPath, loadDirectory]);
+
+    // Watch directory changes
+    useEffect(() => {
+        let unlisten = null;
+
+        const setupWatcher = async () => {
+            if (currentPath && !isSftpPath(currentPath)) {
+                try {
+                    // Start watching the directory
+                    await invoke('watch_directory', { path: currentPath });
+
+                    // Listen for changes
+                    unlisten = await listen('fs-change', (event) => {
+                        // Reload the current directory
+                        loadDirectory(currentPath, true);
+                    });
+                } catch (err) {
+                    console.error('Failed to setup file watcher:', err);
+                }
+            } else {
+                try {
+                    await invoke('unwatch_directory');
+                } catch (e) {
+                    // Ignore errors if unwatch fails
+                }
+            }
+        };
+
+        setupWatcher();
+
+        return () => {
+            if (unlisten) unlisten();
+        };
+    }, [currentPath, loadDirectory, isSftpPath]);
 
     const contextValue = {
         currentDirData,
