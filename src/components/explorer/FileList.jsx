@@ -32,98 +32,72 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
     /**
      * Calculate columns per row based on container width and item size
      */
-    const calculateColumnsPerRow = useCallback(() => {
+    const calculateColumnsPerRow = useCallback((width) => {
         if (!containerRef.current || viewMode !== 'grid') {
             setColumnsPerRow(1);
             onColumnsChange?.(1);
             return;
         }
 
-        const container = containerRef.current;
-        
-        // Try to get computed styles first
-        const computedStyle = window.getComputedStyle(container);
-        const gridTemplateColumns = computedStyle.getPropertyValue('grid-template-columns');
-        
-        // If CSS Grid is being used, count the columns from grid-template-columns
-        if (gridTemplateColumns && gridTemplateColumns !== 'none') {
-            const columns = gridTemplateColumns.split(' ').length;
-            setColumnsPerRow(columns);
-            onColumnsChange?.(columns);
+        // Calculate available width
+        // If width is provided (from ResizeObserver), use it directly (it's content box width)
+        // Otherwise, use clientWidth minus horizontal padding (12px * 2 = 24px)
+        let availableWidth = width;
+        if (availableWidth === undefined) {
+            const container = containerRef.current;
+            // Fallback: Calculate based on container width minus padding
+            // We subtract 24px for padding (12px left + 12px right based on --space-md)
+            availableWidth = container.clientWidth - 24;
+        }
+
+        if (availableWidth <= 0) {
+            // Container too small or not visible
+            setColumnsPerRow(1);
+            onColumnsChange?.(1);
             return;
         }
-        
-        // Fallback: Calculate based on container width
-        const containerWidth = container.offsetWidth || container.clientWidth;
-        
-        if (containerWidth === 0) {
-            // Container not ready yet, use default
-            setColumnsPerRow(4);
-            onColumnsChange?.(4);
-            return;
-        }
-        
-        // Try counting actual file items in the DOM
-        const fileItems = container.querySelectorAll('[data-path]');
-        if (fileItems.length >= 2) {
-            const firstItem = fileItems[0];
-            const firstItemRect = firstItem.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
-            
-            let columnsInFirstRow = 1;
-            for (let i = 1; i < fileItems.length; i++) {
-                const itemRect = fileItems[i].getBoundingClientRect();
-                if (Math.abs(itemRect.top - firstItemRect.top) < 10) {
-                    // Same row (within 10px tolerance)
-                    columnsInFirstRow++;
-                } else {
-                    // Different row, stop counting
-                    break;
-                }
-            }
-            
-            if (columnsInFirstRow > 1) {
-                setColumnsPerRow(columnsInFirstRow);
-                onColumnsChange?.(columnsInFirstRow);
-                return;
-            }
-        }
-        
-        // More conservative estimates for item width
-        const estimatedItemWidth = 160;
+
+        // Constants from CSS: minmax(120px, 1fr) and gap: 12px
+        const minItemWidth = 120;
         const gap = 12;
-        const padding = 32;
-        
-        const availableWidth = containerWidth - padding;
-        const columns = Math.max(1, Math.floor((availableWidth + gap) / (estimatedItemWidth + gap)));
-        
+
+        // Formula for auto-fill columns: floor((availableWidth + gap) / (itemWidth + gap))
+        const columns = Math.max(1, Math.floor((availableWidth + gap) / (minItemWidth + gap)));
+
         setColumnsPerRow(columns);
         onColumnsChange?.(columns);
     }, [viewMode, onColumnsChange]);
 
     // Calculate columns on mount and resize
     useEffect(() => {
+        // Initial calculation
         calculateColumnsPerRow();
-        
+
         const handleResize = () => {
-            setTimeout(calculateColumnsPerRow, 100);
+            // Window resize fallback
+            calculateColumnsPerRow();
         };
-        
-        window.addEventListener('resize', handleResize);
-        
-        // Use ResizeObserver if available for more accurate detection
+
+        // Use ResizeObserver if available for accurate detection without polling/timeouts
         let resizeObserver;
         if (containerRef.current && window.ResizeObserver) {
-            resizeObserver = new ResizeObserver(() => {
-                setTimeout(calculateColumnsPerRow, 50);
+            resizeObserver = new ResizeObserver((entries) => {
+                if (entries[0]) {
+                    // Use contentRect.width which is the precise content box width
+                    calculateColumnsPerRow(entries[0].contentRect.width);
+                }
             });
             resizeObserver.observe(containerRef.current);
+        } else {
+            // Fallback for browsers without ResizeObserver support
+            window.addEventListener('resize', handleResize);
         }
-        
+
         return () => {
-            window.removeEventListener('resize', handleResize);
             if (resizeObserver) {
                 resizeObserver.disconnect();
+            } else {
+                window.removeEventListener('resize', handleResize);
             }
         };
     }, [calculateColumnsPerRow]);
