@@ -22,6 +22,18 @@ import './fileList.css';
 const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, searchTerm = '', disableArrowKeys = false, onColumnsChange }) => {
     const { selectedItems, selectItem, loadDirectory, clearSelection, focusedItem, setFocusedItem, openFile } = useFileSystem();
     const { openContextMenu, clipboard } = useContextMenu();
+
+    // Optimize selection lookup using Set for O(1) access during render loop
+    const selectedPaths = useMemo(() => new Set(selectedItems.map(i => i.path)), [selectedItems]);
+
+    // Optimize cut items lookup using Set
+    const cutPaths = useMemo(() => {
+        if (clipboard?.operation === 'cut' && clipboard.items) {
+            return new Set(clipboard.items.map(i => i.path));
+        }
+        return new Set();
+    }, [clipboard]);
+
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
     const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
     const [isCtrlKeyPressed, setIsCtrlKeyPressed] = useState(false);
@@ -632,18 +644,15 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
-
                         return (
                             <FileItem
                                 key={item.path}
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={selectedPaths.has(item.path)}
                                 isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
+                                isCut={cutPaths.has(item.path)}
                                 onItemClick={stableOnItemClick}
                                 onItemDoubleClick={stableOnItemDoubleClick}
                             />

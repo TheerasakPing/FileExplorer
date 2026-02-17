@@ -1,5 +1,7 @@
 use crate::models::VolumeInformation;
 use sysinfo::Disks;
+#[cfg(test)]
+use crate::log_info;
 
 /// Retrieves information about all system volumes/disks and returns it as a JSON string.
 /// The information includes volume names, mount points, file systems, size, available space, etc.
