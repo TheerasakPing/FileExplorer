@@ -468,6 +468,23 @@ impl SearchEngineState {
         #[cfg(feature = "index-progress-logging")]
         log_info!("Starting optimized streaming indexing for: {}", dir.display());
 
+        // Explicitly handle the root directory first to match WalkDir behavior
+        // which yields the root as the first entry
+        if let Some(path_str) = dir.to_str() {
+            // Check if path should be excluded
+            let should_exclude = excluded_patterns.iter().any(|pattern| {
+                path_str.contains(pattern) || path_str.ends_with(pattern)
+            });
+
+            if !should_exclude {
+                current_batch.push(path_str.to_string());
+                discovered_files += 1;
+
+                // Update progress for the root directory
+                self.update_progress_safely(discovered_files, indexed_files, Some(path_str.to_string()));
+            }
+        }
+
         // Use iterative directory processing to prevent stack overflow
         self.process_directory_iterative(
             dir,
