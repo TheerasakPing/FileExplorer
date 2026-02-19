@@ -19,10 +19,21 @@ import './fileList.css';
  * @param {Function} [props.onColumnsChange] - Callback when columns per row changes
  * @returns {React.ReactElement} File list component
  */
-const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, searchTerm = '', disableArrowKeys = false, onColumnsChange }) => {
+const FileList = ({
+    data,
+    isLoading,
+    viewMode = 'grid',
+    isSearching = false,
+    searchTerm = '',
+    disableArrowKeys = false,
+    onColumnsChange,
+    sortedData,
+    sortConfig: externalSortConfig,
+    onSortChange
+}) => {
     const { selectedItems, selectItem, loadDirectory, clearSelection, focusedItem, setFocusedItem, openFile } = useFileSystem();
     const { openContextMenu, clipboard } = useContextMenu();
-    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+    const [internalSortConfig, setInternalSortConfig] = useState({ key: 'name', direction: 'asc' });
     const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
     const [isCtrlKeyPressed, setIsCtrlKeyPressed] = useState(false);
     const [columnsPerRow, setColumnsPerRow] = useState(4); // Dynamic column calculation
@@ -133,12 +144,16 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         setTimeout(calculateColumnsPerRow, 100);
     }, [viewMode, data, calculateColumnsPerRow]);
 
+    const sortConfig = externalSortConfig || internalSortConfig;
+
     /**
      * Returns sorted data based on current sort configuration
      * Memoized to prevent re-sorting on every render
      * @returns {Array} Sorted array of files and directories
      */
     const sortedItems = useMemo(() => {
+        if (sortedData) return sortedData;
+
         if (!data || (!data.directories?.length && !data.files?.length)) {
             return [];
         }
@@ -184,7 +199,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
             if (aValue > bValue) return direction === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [data, sortConfig]);
+    }, [data, sortConfig, sortedData]);
 
     /**
      * Handles click on the container (empty space)
@@ -488,18 +503,23 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
      * @param {string} key - The column key to sort by
      */
     const handleSort = (key) => {
-        setSortConfig(prevConfig => {
-            // If clicking the same column, toggle direction
-            if (prevConfig.key === key) {
-                return {
-                    ...prevConfig,
-                    direction: prevConfig.direction === 'asc' ? 'desc' : 'asc'
-                };
-            }
+        if (onSortChange) {
+            const direction = sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            onSortChange({ key, direction });
+        } else {
+            setInternalSortConfig(prevConfig => {
+                // If clicking the same column, toggle direction
+                if (prevConfig.key === key) {
+                    return {
+                        ...prevConfig,
+                        direction: prevConfig.direction === 'asc' ? 'desc' : 'asc'
+                    };
+                }
 
-            // Otherwise, sort by the new column in ascending order
-            return { key, direction: 'asc' };
-        });
+                // Otherwise, sort by the new column in ascending order
+                return { key, direction: 'asc' };
+            });
+        }
     };
 
     /**
