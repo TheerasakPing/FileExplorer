@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useTheme } from '../providers/ThemeProvider';
 import { useFileSystem } from '../providers/FileSystemProvider';
 import { useContextMenu } from '../providers/ContextMenuProvider';
@@ -39,6 +39,7 @@ import SettingsApplier from '../utils/SettingsApplier.js';
 
 // Hooks
 import { usePreview } from '../hooks/usePreview';
+import { sortItems } from '../utils/sortUtils';
 
 import '../styles/layouts/mainLayout.css';
 import {replaceFileName} from "../utils/pathUtils.js";
@@ -73,6 +74,7 @@ const MainLayout = () => {
     const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(settings.show_details_panel || false);
     const [isTerminalOpen, setIsTerminalOpen] = useState(false);
     const [viewMode, setViewMode] = useState(settings.default_view || 'grid');
+    const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
     const [searchValue, setSearchValue] = useState('');
     const [searchResults, setSearchResults] = useState(null);
     const [currentView, setCurrentView] = useState('explorer'); // 'explorer', 'this-pc', 'templates'
@@ -100,33 +102,11 @@ const MainLayout = () => {
     // Get terminal height for padding calculations
     const terminalHeight = settings.terminal_height || 240;
 
-    // Get sorted data the same way FileList does
-    const getSortedData = useCallback(() => {
+    // Get sorted data - Memoized result using shared sorting logic
+    const sortedItems = useMemo(() => {
         const data = searchResults || currentDirData;
-        if (!data || (!data.directories?.length && !data.files?.length)) {
-            return [];
-        }
-
-        // Combine directories and files for sorting (same as FileList)
-        const combinedItems = [
-            ...(data.directories || []).map(dir => ({ ...dir, isDirectory: true })),
-            ...(data.files || []).map(file => ({ ...file, isDirectory: false }))
-        ];
-
-        // Sort by name with directories first (same as FileList default)
-        const sortedItems = [...combinedItems].sort((a, b) => {
-            // Directories always come before files
-            if (a.isDirectory && !b.isDirectory) return -1;
-            if (!a.isDirectory && b.isDirectory) return 1;
-
-            // Sort by name
-            const aName = a.name.toLowerCase();
-            const bName = b.name.toLowerCase();
-            return aName.localeCompare(bName);
-        });
-
-        return sortedItems;
-    }, [searchResults, currentDirData]);
+        return sortItems(data, sortConfig);
+    }, [searchResults, currentDirData, sortConfig]);
 
     // Initialize preview functionality
     const getFocusedItem = () => {
@@ -142,7 +122,6 @@ const MainLayout = () => {
 
     // 2D Grid navigation functions using sorted data
     const navigateUp = useCallback(() => {
-        const sortedItems = getSortedData();
         if (!sortedItems.length) return;
         
         const currentIndex = focusedItem ? sortedItems.findIndex(item => item.path === focusedItem.path) : -1;
@@ -158,10 +137,9 @@ const MainLayout = () => {
             const targetIndex = Math.min(lastRowStartIndex + remainder, sortedItems.length - 1);
             setFocusedItem(sortedItems[targetIndex]);
         }
-    }, [getSortedData, focusedItem, setFocusedItem, columnsPerRow]);
+    }, [sortedItems, focusedItem, setFocusedItem, columnsPerRow]);
 
     const navigateDown = useCallback(() => {
-        const sortedItems = getSortedData();
         if (!sortedItems.length) return;
         
         const currentIndex = focusedItem ? sortedItems.findIndex(item => item.path === focusedItem.path) : -1;
@@ -174,10 +152,9 @@ const MainLayout = () => {
             const remainder = currentIndex % columnsPerRow;
             setFocusedItem(sortedItems[remainder]);
         }
-    }, [getSortedData, focusedItem, setFocusedItem, columnsPerRow]);
+    }, [sortedItems, focusedItem, setFocusedItem, columnsPerRow]);
 
     const navigateLeft = useCallback(() => {
-        const sortedItems = getSortedData();
         if (!sortedItems.length) return;
         
         const currentIndex = focusedItem ? sortedItems.findIndex(item => item.path === focusedItem.path) : -1;
@@ -190,10 +167,9 @@ const MainLayout = () => {
         } else {
             setFocusedItem(sortedItems[currentIndex - 1]);
         }
-    }, [getSortedData, focusedItem, setFocusedItem, columnsPerRow]);
+    }, [sortedItems, focusedItem, setFocusedItem, columnsPerRow]);
 
     const navigateRight = useCallback(() => {
-        const sortedItems = getSortedData();
         if (!sortedItems.length) return;
         
         const currentIndex = focusedItem ? sortedItems.findIndex(item => item.path === focusedItem.path) : -1;
@@ -206,7 +182,7 @@ const MainLayout = () => {
         } else {
             setFocusedItem(sortedItems[currentIndex + 1]);
         }
-    }, [getSortedData, focusedItem, setFocusedItem, columnsPerRow]);
+    }, [sortedItems, focusedItem, setFocusedItem, columnsPerRow]);
 
     const { 
         open: isPreviewOpen, 
@@ -879,6 +855,9 @@ const MainLayout = () => {
                             searchTerm={searchValue}
                             disableArrowKeys={isPreviewOpen}
                             onColumnsChange={setColumnsPerRow}
+                            sortedData={sortedItems}
+                            sortConfig={sortConfig}
+                            onSortChange={setSortConfig}
                         />
                     </div>
                 );
