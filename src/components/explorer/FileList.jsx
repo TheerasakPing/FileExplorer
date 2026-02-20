@@ -22,6 +22,19 @@ import './fileList.css';
 const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, searchTerm = '', disableArrowKeys = false, onColumnsChange }) => {
     const { selectedItems, selectItem, loadDirectory, clearSelection, focusedItem, setFocusedItem, openFile } = useFileSystem();
     const { openContextMenu, clipboard } = useContextMenu();
+
+    // Optimize selection and cut checks using Sets for O(1) lookups
+    const selectedPaths = useMemo(() => {
+        return new Set(selectedItems.map(item => item.path));
+    }, [selectedItems]);
+
+    const cutPaths = useMemo(() => {
+        if (clipboard?.operation === 'cut' && clipboard?.items) {
+            return new Set(clipboard.items.map(item => item.path));
+        }
+        return new Set();
+    }, [clipboard]);
+
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
     const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
     const [isCtrlKeyPressed, setIsCtrlKeyPressed] = useState(false);
@@ -632,8 +645,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+                        // O(1) lookups using Sets
+                        const isCut = cutPaths.has(item.path);
+                        const isSelected = selectedPaths.has(item.path);
 
                         return (
                             <FileItem
@@ -641,7 +655,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={isSelected}
                                 isFocused={focusedItem && focusedItem.path === item.path}
                                 isCut={!!isCut}
                                 onItemClick={stableOnItemClick}
