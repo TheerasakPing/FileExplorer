@@ -133,6 +133,18 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         setTimeout(calculateColumnsPerRow, 100);
     }, [viewMode, data, calculateColumnsPerRow]);
 
+    // Optimize selection check with Set O(1)
+    const selectedPaths = useMemo(() => {
+        return new Set(selectedItems.map(item => item.path));
+    }, [selectedItems]);
+
+    // Optimize clipboard check with Set O(1)
+    const clipboardItems = clipboard?.items;
+    const clipboardPaths = useMemo(() => {
+        if (!clipboardItems) return new Set();
+        return new Set(clipboardItems.map(item => item.path));
+    }, [clipboardItems]);
+
     /**
      * Returns sorted data based on current sort configuration
      * Memoized to prevent re-sorting on every render
@@ -633,7 +645,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
                         const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+                                      clipboardPaths.has(item.path);
 
                         return (
                             <FileItem
@@ -641,7 +653,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={selectedPaths.has(item.path)}
                                 isFocused={focusedItem && focusedItem.path === item.path}
                                 isCut={!!isCut}
                                 onItemClick={stableOnItemClick}
