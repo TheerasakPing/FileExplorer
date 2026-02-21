@@ -468,6 +468,20 @@ impl SearchEngineState {
         #[cfg(feature = "index-progress-logging")]
         log_info!("Starting optimized streaming indexing for: {}", dir.display());
 
+        // Add the root directory itself to match behavior of recursive indexing (WalkDir)
+        // This ensures consistency between indexing methods
+        if let Some(path_str) = dir.to_str() {
+            // Check exclusion patterns for root dir
+            let should_exclude = excluded_patterns.iter().any(|pattern| {
+                path_str.contains(pattern) || path_str.ends_with(pattern)
+            });
+
+            if !should_exclude {
+                current_batch.push(path_str.to_string());
+                discovered_files += 1;
+            }
+        }
+
         // Use iterative directory processing to prevent stack overflow
         self.process_directory_iterative(
             dir,
