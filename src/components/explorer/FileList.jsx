@@ -187,6 +187,21 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
     }, [data, sortConfig]);
 
     /**
+     * Create Sets for O(1) lookups instead of O(N) arrays
+     * This significantly improves render performance for large lists and selections
+     */
+    const selectedPaths = useMemo(() => {
+        return new Set(selectedItems.map(item => item.path));
+    }, [selectedItems]);
+
+    const cutPaths = useMemo(() => {
+        if (clipboard?.operation === 'cut' && clipboard.items) {
+            return new Set(clipboard.items.map(item => item.path));
+        }
+        return new Set();
+    }, [clipboard]);
+
+    /**
      * Handles click on the container (empty space)
      * @param {React.MouseEvent} e - The click event
      */
@@ -632,8 +647,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+                        // Use O(1) Set lookups instead of O(N) Array.some()
+                        const isCut = cutPaths.has(item.path);
+                        const isSelected = selectedPaths.has(item.path);
 
                         return (
                             <FileItem
@@ -641,9 +657,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={isSelected}
                                 isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
+                                isCut={isCut}
                                 onItemClick={stableOnItemClick}
                                 onItemDoubleClick={stableOnItemDoubleClick}
                             />
