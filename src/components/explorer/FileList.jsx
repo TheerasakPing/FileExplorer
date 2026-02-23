@@ -29,6 +29,20 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
     const containerRef = useRef(null);
     const [lastSelectedIndex, setLastSelectedIndex] = useState(-1);
 
+    // Optimize selection lookups with O(1) Set access
+    const selectedPaths = useMemo(() =>
+        new Set(selectedItems.map(item => item.path)),
+        [selectedItems]
+    );
+
+    // Optimize cut operation lookups with O(1) Set access
+    const cutPaths = useMemo(() => {
+        if (clipboard?.operation === 'cut' && clipboard.items) {
+            return new Set(clipboard.items.map(item => item.path));
+        }
+        return new Set();
+    }, [clipboard]);
+
     /**
      * Calculate columns per row based on container width and item size
      */
@@ -632,18 +646,15 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
-
                         return (
                             <FileItem
                                 key={item.path}
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={selectedPaths.has(item.path)}
                                 isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
+                                isCut={cutPaths.has(item.path)}
                                 onItemClick={stableOnItemClick}
                                 onItemDoubleClick={stableOnItemDoubleClick}
                             />
