@@ -579,6 +579,16 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         handleItemClickRef.current(item, index, true);
     }, []);
 
+    // Create Sets for O(1) lookups to optimize rendering performance
+    const selectedPathsSet = useMemo(() => new Set(selectedItems.map(item => item.path)), [selectedItems]);
+
+    const cutPathsSet = useMemo(() => {
+        if (clipboard?.operation === 'cut' && Array.isArray(clipboard.items)) {
+            return new Set(clipboard.items.map(item => item.path));
+        }
+        return new Set();
+    }, [clipboard]);
+
     return (
         <div className="file-list-wrapper">
             <div
@@ -631,24 +641,19 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
 
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
-                    {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
-
-                        return (
-                            <FileItem
-                                key={item.path}
-                                item={item}
-                                index={index}
-                                viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
-                                isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
-                                onItemClick={stableOnItemClick}
-                                onItemDoubleClick={stableOnItemDoubleClick}
-                            />
-                        );
-                    })}
+                    {sortedItems.map((item, index) => (
+                        <FileItem
+                            key={item.path}
+                            item={item}
+                            index={index}
+                            viewMode={viewMode}
+                            isSelected={selectedPathsSet.has(item.path)}
+                            isFocused={focusedItem && focusedItem.path === item.path}
+                            isCut={cutPathsSet.has(item.path)}
+                            onItemClick={stableOnItemClick}
+                            onItemDoubleClick={stableOnItemDoubleClick}
+                        />
+                    ))}
                 </div>
             </div>
         </div>
