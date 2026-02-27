@@ -30,6 +30,24 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
     const [lastSelectedIndex, setLastSelectedIndex] = useState(-1);
 
     /**
+     * Memoize selected paths for O(1) lookup
+     * Reduces complexity from O(N*M) to O(N) during rendering
+     */
+    const selectedPaths = useMemo(() => {
+        return new Set(selectedItems.map(item => item.path));
+    }, [selectedItems]);
+
+    /**
+     * Memoize cut paths for O(1) lookup
+     */
+    const cutPaths = useMemo(() => {
+        if (clipboard?.operation === 'cut' && clipboard.items) {
+            return new Set(clipboard.items.map(item => item.path));
+        }
+        return new Set();
+    }, [clipboard]);
+
+    /**
      * Calculate columns per row based on container width and item size
      */
     const calculateColumnsPerRow = useCallback(() => {
@@ -632,8 +650,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+                        // Use Set lookups for O(1) performance instead of Array.some() O(N)
+                        const isSelected = selectedPaths.has(item.path);
+                        const isCut = cutPaths.has(item.path);
 
                         return (
                             <FileItem
@@ -641,9 +660,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={isSelected}
                                 isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
+                                isCut={isCut}
                                 onItemClick={stableOnItemClick}
                                 onItemDoubleClick={stableOnItemDoubleClick}
                             />
