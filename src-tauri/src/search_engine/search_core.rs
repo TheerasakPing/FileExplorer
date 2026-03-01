@@ -643,7 +643,7 @@ impl SearchCore {
             path
         );
         
-        #[allow(unused_variables)]
+        #[allow(unused_assignments, unused_variables)]
         let mut removed_count = 1;
 
         let mut paths_to_remove = Vec::new();
@@ -886,7 +886,7 @@ impl SearchCore {
             }
 
             let mut seen: HashSet<String> = self.results_buffer.iter().map(|(p, _)| p.clone()).collect();
-            #[allow(unused_variables)]
+            #[allow(unused_assignments, unused_variables)]
             let mut added_fuzzy = 0;
             
             for (p, s) in fuzzy_results {
