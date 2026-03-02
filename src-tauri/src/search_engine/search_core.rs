@@ -644,7 +644,7 @@ impl SearchCore {
         );
         
         #[allow(unused_variables)]
-        let mut removed_count = 1;
+        let mut _removed_count = 1;
 
         let mut paths_to_remove = Vec::new();
 
@@ -672,11 +672,11 @@ impl SearchCore {
                 
                 self.remove_paths_recursive(&path_to_remove);
                 
-                removed_count += 1;
+                _removed_count += 1;
             } else {
                 self.remove_path(&path_to_remove);
                 
-                removed_count += 1;
+                _removed_count += 1;
             }
         }
 
@@ -687,13 +687,13 @@ impl SearchCore {
         {
             let elapsed = start_time.elapsed();
             let paths_per_ms = if elapsed.as_millis() > 0 {
-                removed_count as f64 / elapsed.as_millis() as f64
+                _removed_count as f64 / elapsed.as_millis() as f64
             } else {
-                removed_count as f64 // Avoid division by zero
+                _removed_count as f64 // Avoid division by zero
             };
             
             log_info!("Completed recursive removal of '{}': {} paths in {:?} ({:.2} paths/ms)",
-                     path, removed_count, elapsed, paths_per_ms);
+                     path, _removed_count, elapsed, paths_per_ms);
         }
     }
 
@@ -887,18 +887,18 @@ impl SearchCore {
 
             let mut seen: HashSet<String> = self.results_buffer.iter().map(|(p, _)| p.clone()).collect();
             #[allow(unused_variables)]
-            let mut added_fuzzy = 0;
+            let mut _added_fuzzy = 0;
             
             for (p, s) in fuzzy_results {
                 if !seen.contains(&p) {
                     seen.insert(p.clone());
                     self.results_buffer.push((p, s));
-                    added_fuzzy += 1;
+                    _added_fuzzy += 1;
                 }
             }
             
             #[cfg(feature = "search-progress-logging")]
-            log_info!("Added {} unique fuzzy results after deduplication", added_fuzzy);
+            log_info!("Added {} unique fuzzy results after deduplication", _added_fuzzy);
         }
         
         if self.results_buffer.is_empty() {
