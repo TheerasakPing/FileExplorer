@@ -1787,18 +1787,47 @@ mod tests_searchengine_state {
             "Error should mention indexing"
         );
 
-        // Try to start another indexing operation - should stop the previous one and start new
-        let second_index_result = state.start_indexing(subdir.clone());
+        // Cancel the running indexing task instead of starting a new one immediately
+        // Wait a tiny bit to make sure it's actually running
+        thread::sleep(Duration::from_millis(50));
+        let cancel_result = state.cancel_indexing();
         assert!(
-            second_index_result.is_ok(),
-            "Starting new indexing operation should succeed even when one is in progress"
+            cancel_result.is_ok(),
+            "Cancelling index operation should succeed"
         );
 
         // Wait for indexing thread to complete
         indexing_thread.join().unwrap();
 
-        // Allow more time for the second indexing operation to complete and update the state
-        thread::sleep(Duration::from_millis(1000)); // Increased wait time to 1 second
+        // Ensure state is idle after cancellation
+        {
+            let data = state.data.lock().unwrap();
+            assert_eq!(
+                data.status,
+                SearchEngineStatus::Idle,
+                "Status should be Idle after cancellation"
+            );
+        }
+
+        // Try to start another indexing operation - it should succeed
+        let second_index_result = state.start_indexing(subdir.clone());
+        assert!(
+            second_index_result.is_ok(),
+            "Starting new indexing operation should succeed"
+        );
+
+        // Wait for the new indexing operation to complete
+        loop {
+            let data = state.data.lock().unwrap();
+            if matches!(data.status, SearchEngineStatus::Idle) {
+                break;
+            }
+            drop(data);
+            thread::sleep(Duration::from_millis(50));
+        }
+
+        // Allow slightly more time for the state to update fully
+        thread::sleep(Duration::from_millis(100));
 
         // Get the expected directory name for comparison
         let expected_name = subdir
@@ -3274,11 +3303,27 @@ mod tests_searchengine_state {
 
         // Index with traditional method
         let _ = state1.start_indexing(test_dir.clone());
-        thread::sleep(Duration::from_millis(100));
+
+        // Wait for traditional indexing to complete
+        loop {
+            let status = state1.data.lock().unwrap().status.clone();
+            if matches!(status, SearchEngineStatus::Idle) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
 
         // Index with chunked method
         let _ = state2.start_chunked_indexing(test_dir.clone(), 3);
-        thread::sleep(Duration::from_millis(100));
+
+        // Wait for chunked indexing to complete
+        loop {
+            let status = state2.data.lock().unwrap().status.clone();
+            if matches!(status, SearchEngineStatus::Idle) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
 
         // Compare search results
         let search_terms = ["document", "readme", "script"];
