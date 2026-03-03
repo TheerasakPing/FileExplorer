@@ -101,6 +101,23 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         onColumnsChange?.(columns);
     }, [viewMode, onColumnsChange]);
 
+    /**
+     * Pre-compute Sets for O(1) lookups during render to avoid O(N*M) complexity
+     * ⚡ Bolt Performance Optimization:
+     * Replaces Array.prototype.some() with Set.prototype.has() in render loop.
+     * Expected impact: Reduces render time for large directories significantly.
+     */
+    const selectedPathsSet = useMemo(() => {
+        return new Set(selectedItems.map(item => item.path));
+    }, [selectedItems]);
+
+    const cutPathsSet = useMemo(() => {
+        if (clipboard?.operation === 'cut' && clipboard.items) {
+            return new Set(clipboard.items.map(item => item.path));
+        }
+        return new Set();
+    }, [clipboard]);
+
     // Calculate columns on mount and resize
     useEffect(() => {
         calculateColumnsPerRow();
@@ -355,7 +372,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                         });
                     } else if (e.ctrlKey || e.metaKey) {
                         // Cmd/Ctrl+Arrow: add/remove focused item to selection
-                        const isAlreadySelected = selectedItems.some(selected => selected.path === item.path);
+                        const isAlreadySelected = selectedPathsSet.has(item.path);
                         if (isAlreadySelected) {
                             // Deselect by clearing and re-selecting others
                             const otherSelected = selectedItems.filter(selected => selected.path !== item.path);
@@ -523,7 +540,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         }
 
         // For single click, handle selection
-        const isAlreadySelected = selectedItems.some(selected => selected.path === item.path);
+        const isAlreadySelected = selectedPathsSet.has(item.path);
 
         if (isShiftKeyPressed && lastSelectedIndex !== -1) {
             // Multi-select with shift key
@@ -632,8 +649,8 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+                        const isCut = cutPathsSet.has(item.path);
+                        const isSelected = selectedPathsSet.has(item.path);
 
                         return (
                             <FileItem
@@ -641,9 +658,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={isSelected}
                                 isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
+                                isCut={isCut}
                                 onItemClick={stableOnItemClick}
                                 onItemDoubleClick={stableOnItemDoubleClick}
                             />
