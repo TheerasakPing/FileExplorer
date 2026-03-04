@@ -579,6 +579,19 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         handleItemClickRef.current(item, index, true);
     }, []);
 
+    // ⚡ Bolt: Compute selected items set to O(1) lookup during rendering (was O(N*M) with Array.some)
+    const selectedItemsSet = useMemo(() => {
+        return new Set(selectedItems.map(item => item.path));
+    }, [selectedItems]);
+
+    // ⚡ Bolt: Compute clipboard cut items set for O(1) lookup
+    const cutItemsSet = useMemo(() => {
+        if (clipboard?.operation !== 'cut' || !clipboard?.items) {
+            return new Set();
+        }
+        return new Set(clipboard.items.map(item => item.path));
+    }, [clipboard]);
+
     return (
         <div className="file-list-wrapper">
             <div
@@ -632,8 +645,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+                        const isCut = cutItemsSet.has(item.path);
 
                         return (
                             <FileItem
@@ -641,9 +653,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={selectedItemsSet.has(item.path)}
                                 isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
+                                isCut={isCut}
                                 onItemClick={stableOnItemClick}
                                 onItemDoubleClick={stableOnItemDoubleClick}
                             />

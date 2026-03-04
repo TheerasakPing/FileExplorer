@@ -1,0 +1,3 @@
+## 2024-03-04 - [React Render Optimization: O(N*M) to O(N) Array Loops]
+**Learning:** Found a critical performance bottleneck in `FileList.jsx` where `Array.prototype.some()` was called for every item rendered (`sortedItems.map`), performing deep comparison logic to find if `selectedItems` or `clipboard.items` contained it. This effectively gave rendering O(N * M) complexity. Using `.some` within lists is an anti-pattern when rendering many items.
+**Action:** When rendering large lists, always compute `Set` or hash maps of required arrays outside the render map loop via `useMemo`. `Set.prototype.has` converts the lookup inside the map function to O(1), making overall rendering logic O(N).

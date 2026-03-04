@@ -643,8 +643,7 @@ impl SearchCore {
             path
         );
         
-        #[allow(unused_variables)]
-        let mut removed_count = 1;
+        let mut _removed_count = 1;
 
         let mut paths_to_remove = Vec::new();
 
@@ -672,11 +671,11 @@ impl SearchCore {
                 
                 self.remove_paths_recursive(&path_to_remove);
                 
-                removed_count += 1;
+                _removed_count += 1;
             } else {
                 self.remove_path(&path_to_remove);
                 
-                removed_count += 1;
+                _removed_count += 1;
             }
         }
 
@@ -887,18 +886,18 @@ impl SearchCore {
 
             let mut seen: HashSet<String> = self.results_buffer.iter().map(|(p, _)| p.clone()).collect();
             #[allow(unused_variables)]
-            let mut added_fuzzy = 0;
+            let mut _added_fuzzy = 0;
             
             for (p, s) in fuzzy_results {
                 if !seen.contains(&p) {
                     seen.insert(p.clone());
                     self.results_buffer.push((p, s));
-                    added_fuzzy += 1;
+                    _added_fuzzy += 1;
                 }
             }
             
             #[cfg(feature = "search-progress-logging")]
-            log_info!("Added {} unique fuzzy results after deduplication", added_fuzzy);
+            log_info!("Added {} unique fuzzy results after deduplication", _added_fuzzy);
         }
         
         if self.results_buffer.is_empty() {
