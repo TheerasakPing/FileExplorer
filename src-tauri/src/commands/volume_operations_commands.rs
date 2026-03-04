@@ -136,6 +136,7 @@ pub fn get_system_volumes_information() -> Vec<VolumeInformation> {
 
 #[cfg(test)]
 mod tests {
+    use crate::log_info;
     use super::*;
 
     #[test]
