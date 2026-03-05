@@ -1,4 +1,4 @@
-use std::process::Command;
+
 
 #[tauri::command]
 pub fn request_full_disk_access() -> Result<(), String> {
