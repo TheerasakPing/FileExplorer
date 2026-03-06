@@ -1,0 +1,3 @@
+## 2024-03-06 - [React Performance: Array.some() inside map() Anti-pattern]
+**Learning:** Checking an array with `.some()` inside a `.map()` loop creates an O(N * M) performance bottleneck (where N is the number of items and M is the size of the selection/comparison array). This caused latency issues when rendering a large list of files, as each file item recursively scanned the selected and cut item lists to determine its state.
+**Action:** Always pre-compute a `Set` for selections or state-tracking arrays using `useMemo` before mapping over large lists. Replacing `.some()` with `Set.has()` reduces the complexity to O(N) since `Set.has()` is an O(1) operation.
