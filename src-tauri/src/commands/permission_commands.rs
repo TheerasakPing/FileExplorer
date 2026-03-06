@@ -1,10 +1,10 @@
-use std::process::Command;
-
 #[tauri::command]
 pub fn request_full_disk_access() -> Result<(), String> {
     // Check if we're on macOS
     #[cfg(target_os = "macos")]
     {
+        use std::process::Command;
+
         // Open System Preferences to Full Disk Access
         let result = Command::new("open")
             .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
