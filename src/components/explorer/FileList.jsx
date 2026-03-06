@@ -579,6 +579,14 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         handleItemClickRef.current(item, index, true);
     }, []);
 
+    // Memoize sets of paths for O(1) lookups instead of O(N*M) array iterations
+    const selectedPathsSet = useMemo(() => new Set(selectedItems.map(item => item.path)), [selectedItems]);
+
+    const cutPathsSet = useMemo(() => {
+        if (clipboard?.operation !== 'cut' || !clipboard?.items) return new Set();
+        return new Set(clipboard.items.map(item => item.path));
+    }, [clipboard]);
+
     return (
         <div className="file-list-wrapper">
             <div
@@ -632,8 +640,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+                        const isCut = cutPathsSet.has(item.path);
 
                         return (
                             <FileItem
@@ -641,9 +648,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={selectedPathsSet.has(item.path)}
                                 isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
+                                isCut={isCut}
                                 onItemClick={stableOnItemClick}
                                 onItemDoubleClick={stableOnItemDoubleClick}
                             />
