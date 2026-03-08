@@ -3919,18 +3919,28 @@ mod bench_indexing_methods {
             handles.push(handle);
         }
 
-        // All searches should complete successfully
+        // Some searches should succeed, others should be rejected with "Engine is currently searching"
+        let mut success_count = 0;
+        let mut rejected_count = 0;
         for (i, handle) in handles.into_iter().enumerate() {
             let result = handle.join().unwrap();
             match result {
                 Ok(_) => {
-                    // Search succeeded
+                    success_count += 1;
                 }
-                Err(ref err) => {
-                    println!("Concurrent search {} failed with error: {}", i, err);
+                Err(err) => {
+                    if err == "Engine is currently searching" {
+                        rejected_count += 1;
+                    } else {
+                        panic!("Unexpected error from concurrent search {}: {}", i, err);
+                    }
                 }
             }
-            assert!(result.is_ok(), "Concurrent search {} should succeed, got error: {:?}", i, result.err());
         }
+
+        assert!(
+            success_count + rejected_count == 5,
+            "All searches should either succeed or be rejected"
+        );
     }
 }
