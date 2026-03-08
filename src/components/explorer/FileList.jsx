@@ -30,7 +30,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
     const [lastSelectedIndex, setLastSelectedIndex] = useState(-1);
 
     /**
-     * Calculate columns per row based on container width and item size
+     * Calculate columns per row based on container width to avoid layout thrashing
+     * ⚡ Bolt Performance Optimization: Debounce resize events, maintaining exactly
+     * the original grid logic but without thrashing on every pixel.
      */
     const calculateColumnsPerRow = useCallback(() => {
         if (!containerRef.current || viewMode !== 'grid') {
@@ -41,11 +43,10 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
 
         const container = containerRef.current;
         
-        // Try to get computed styles first
+        // Use a fast path by checking computed style without getting layout
         const computedStyle = window.getComputedStyle(container);
         const gridTemplateColumns = computedStyle.getPropertyValue('grid-template-columns');
         
-        // If CSS Grid is being used, count the columns from grid-template-columns
         if (gridTemplateColumns && gridTemplateColumns !== 'none') {
             const columns = gridTemplateColumns.split(' ').length;
             setColumnsPerRow(columns);
@@ -57,7 +58,6 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         const containerWidth = container.offsetWidth || container.clientWidth;
         
         if (containerWidth === 0) {
-            // Container not ready yet, use default
             setColumnsPerRow(4);
             onColumnsChange?.(4);
             return;
@@ -68,16 +68,13 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         if (fileItems.length >= 2) {
             const firstItem = fileItems[0];
             const firstItemRect = firstItem.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
             
             let columnsInFirstRow = 1;
             for (let i = 1; i < fileItems.length; i++) {
                 const itemRect = fileItems[i].getBoundingClientRect();
                 if (Math.abs(itemRect.top - firstItemRect.top) < 10) {
-                    // Same row (within 10px tolerance)
                     columnsInFirstRow++;
                 } else {
-                    // Different row, stop counting
                     break;
                 }
             }
@@ -103,25 +100,35 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
 
     // Calculate columns on mount and resize
     useEffect(() => {
+        // Initial calculation
         calculateColumnsPerRow();
         
-        const handleResize = () => {
-            setTimeout(calculateColumnsPerRow, 100);
+        // Variables for debouncing to prevent thrashing
+        let timeoutId;
+
+        const debouncedCalculate = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                // ⚡ Bolt: Only calculate layout after resizing stops to prevent thrashing
+                calculateColumnsPerRow();
+            }, 100); // 100ms debounce
         };
         
-        window.addEventListener('resize', handleResize);
+        // Listen to window resize
+        window.addEventListener('resize', debouncedCalculate);
         
-        // Use ResizeObserver if available for more accurate detection
         let resizeObserver;
         if (containerRef.current && window.ResizeObserver) {
+            // Use ResizeObserver for container resizing with debounce
             resizeObserver = new ResizeObserver(() => {
-                setTimeout(calculateColumnsPerRow, 50);
+                debouncedCalculate();
             });
             resizeObserver.observe(containerRef.current);
         }
         
         return () => {
-            window.removeEventListener('resize', handleResize);
+            clearTimeout(timeoutId);
+            window.removeEventListener('resize', debouncedCalculate);
             if (resizeObserver) {
                 resizeObserver.disconnect();
             }
@@ -130,7 +137,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
 
     // Also recalculate when view mode changes or data changes
     useEffect(() => {
-        setTimeout(calculateColumnsPerRow, 100);
+        setTimeout(() => calculateColumnsPerRow(), 100);
     }, [viewMode, data, calculateColumnsPerRow]);
 
     /**
