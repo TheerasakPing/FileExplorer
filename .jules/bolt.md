@@ -1,0 +1,3 @@
+## 2024-05-18 - [Optimize Selection and Clipboard State Checks in FileList]
+**Learning:** Checking state conditions using `.some()` iteratively over `selectedItems` and `clipboard.items` inside `.map()` array renders scales O(N*M), severely degrading application performance in directories with high file counts.
+**Action:** Replace `.some()` inside loop checks with O(1) checks against a `Set` built utilizing `useMemo`. This prevents O(N*M) calculation complexity for item render attributes like `isSelected` and `isCut` when rendering children in large collections.

@@ -579,6 +579,16 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
         handleItemClickRef.current(item, index, true);
     }, []);
 
+    // ⚡ Bolt: O(1) lookups for selection and clipboard state to avoid O(N*M) complexity in rendering loop
+    const selectedPaths = useMemo(() => {
+        return new Set(selectedItems.map(item => item.path));
+    }, [selectedItems]);
+
+    const cutPaths = useMemo(() => {
+        if (clipboard?.operation !== 'cut' || !clipboard?.items) return new Set();
+        return new Set(clipboard.items.map(item => item.path));
+    }, [clipboard]);
+
     return (
         <div className="file-list-wrapper">
             <div
@@ -632,8 +642,7 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                 {/* File list content */}
                 <div className={`file-list view-mode-${viewMode.toLowerCase()} scrollable-content`}>
                     {sortedItems.map((item, index) => {
-                        const isCut = clipboard?.operation === 'cut' &&
-                                      clipboard.items?.some(clipItem => clipItem.path === item.path);
+                        const isCut = cutPaths.has(item.path);
 
                         return (
                             <FileItem
@@ -641,9 +650,9 @@ const FileList = ({ data, isLoading, viewMode = 'grid', isSearching = false, sea
                                 item={item}
                                 index={index}
                                 viewMode={viewMode}
-                                isSelected={selectedItems.some(selected => selected.path === item.path)}
+                                isSelected={selectedPaths.has(item.path)}
                                 isFocused={focusedItem && focusedItem.path === item.path}
-                                isCut={!!isCut}
+                                isCut={isCut}
                                 onItemClick={stableOnItemClick}
                                 onItemDoubleClick={stableOnItemDoubleClick}
                             />
