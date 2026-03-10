@@ -673,11 +673,13 @@ impl SearchCore {
                 
                 self.remove_paths_recursive(&path_to_remove);
                 
-                removed_count += 1;
+                #[allow(unused_assignments)]
+                { removed_count += 1; }
             } else {
                 self.remove_path(&path_to_remove);
                 
-                removed_count += 1;
+                #[allow(unused_assignments)]
+                { removed_count += 1; }
             }
         }
 
@@ -895,7 +897,8 @@ impl SearchCore {
                 if !seen.contains(&p) {
                     seen.insert(p.clone());
                     self.results_buffer.push((p, s));
-                    added_fuzzy += 1;
+                    #[allow(unused_assignments)]
+                    { added_fuzzy += 1; }
                 }
             }
             
