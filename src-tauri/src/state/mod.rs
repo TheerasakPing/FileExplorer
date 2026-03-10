@@ -9,7 +9,7 @@ use logging::Logger;
 use crate::state::searchengine_data::SearchEngineState;
 use meta_data::MetaDataState;
 use std::sync::{Arc, Mutex};
-use tauri::{Builder, Wry, Manager};
+use tauri::{Builder, Wry};
 
 pub fn setup_app_state(app: Builder<Wry>) -> Builder<Wry> {
     // Create our shared state instances

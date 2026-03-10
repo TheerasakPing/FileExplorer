@@ -643,6 +643,7 @@ impl SearchCore {
             path
         );
         
+        #[allow(unused_assignments)]
         #[allow(unused_variables)]
         let mut removed_count = 1;
 
@@ -886,6 +887,7 @@ impl SearchCore {
             }
 
             let mut seen: HashSet<String> = self.results_buffer.iter().map(|(p, _)| p.clone()).collect();
+            #[allow(unused_assignments)]
             #[allow(unused_variables)]
             let mut added_fuzzy = 0;
             
