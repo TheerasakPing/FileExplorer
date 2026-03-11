@@ -1,0 +1,3 @@
+## 2024-05-24 - [O(N*M) Array.some() Anti-Pattern in React Render Loops]
+**Learning:** Found an O(N*M) complexity issue in `FileList.jsx` where `.some()` is used to iterate over a secondary array (`selectedItems`, `clipboard.items`) for every single item rendered in a `sortedItems.map` list. This can severely degrade performance in directories with a large number of files, as the list scales poorly.
+**Action:** When mapping over large lists to render components and checking against another list (like selected items), always pre-compute a `Set` via `useMemo` and use `.has()` for O(1) lookups instead.

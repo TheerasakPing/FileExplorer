@@ -644,6 +644,7 @@ impl SearchCore {
         );
         
         #[allow(unused_variables)]
+        #[allow(unused_assignments)]
         let mut removed_count = 1;
 
         let mut paths_to_remove = Vec::new();
